@@ -4,7 +4,7 @@ Read back what your Laravel application actually did, without opening a log file
 
 Four tables in a Filament cluster:
 
-- **Exceptions** — every exception the application reported, with the request or command it came out of, fingerprinted so the same failure can be narrowed down to one problem.
+- **Exceptions** — every exception the application reported, with the request or command it came out of, fingerprinted so the same failure can be narrowed down to one problem, and put away once you have decided what it is worth.
 - **Logs** — every line the application logged, with its PSR-3 level as a number so "warnings and worse" is one filter.
 - **Outgoing requests** — every call the HTTP client made, with what was sent, what came back, and how long it took — including the calls that never reached the other side.
 - **Incoming webhooks** — every delivery to your webhook endpoints, including the ones that were turned away, since a webhook that stops working usually stops at the signature check.
@@ -12,6 +12,17 @@ Four tables in a Filament cluster:
 Credentials are never stored: the headers that carry one are replaced before the row is written. Bodies are truncated to a readable length while the recorded size stays the size of the full body. Everything ages out after a retention window, so the tables answer "what is broken right now" without growing without end.
 
 A failure of the recording never reaches the code it observes: an unreachable or unmigrated database leaves the request it was watching untouched.
+
+## Putting an exception away
+
+An exceptions table that only grows is one nobody reads. Two decisions keep it worth opening, and both are about the problem rather than the row you were looking at — they cover every occurrence that shares its fingerprint, including the ones that have not happened yet:
+
+- **Ignore** — known, not worth looking at. Occurrences keep being recorded; they just stay out of the table.
+- **Mark as fixed** — dealt with. Everything up to that moment leaves the table, and anything that happens *after* it comes back on its own. A fix that did not hold tells you so without you having to remember to check.
+
+Both are offered from the modal you read an exception in, from the record's own page, and as bulk actions on a selection — where a selection is decided about per problem, so picking two occurrences of one failure and one of another is two decisions, not three. **Reopen** takes a decision back.
+
+The table opens on what nobody has put away yet. The rest is behind the status filter rather than gone, and the navigation badge counts only what still wants an answer.
 
 ## Installation
 

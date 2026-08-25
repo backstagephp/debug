@@ -36,6 +36,7 @@ class DebugServiceProvider extends PackageServiceProvider
                 'create_outgoing_requests_table',
                 'create_incoming_webhooks_table',
                 'create_logs_table',
+                'create_exception_states_table',
             )
             ->hasInstallCommand(function (InstallCommand $command): void {
                 $command

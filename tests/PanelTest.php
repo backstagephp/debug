@@ -2,20 +2,25 @@
 
 namespace Backstage\Debug\Tests;
 
+use Backstage\Debug\Enums\ExceptionStatus;
 use Backstage\Debug\Filament\Clusters\DebugCluster;
 use Backstage\Debug\Filament\Resources\ExceptionResource;
+use Backstage\Debug\Filament\Resources\ExceptionResource\Pages\ListExceptions;
 use Backstage\Debug\Filament\Resources\IncomingWebhookResource;
 use Backstage\Debug\Filament\Resources\LogResource;
 use Backstage\Debug\Filament\Resources\OutgoingRequestResource;
 use Backstage\Debug\Models\Exception;
+use Backstage\Debug\Models\ExceptionState;
 use Backstage\Debug\Models\IncomingWebhook;
 use Backstage\Debug\Models\Log;
 use Backstage\Debug\Models\OutgoingRequest;
 use Backstage\Debug\Tests\Fixtures\User;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Illuminate\Support\Collection;
+use Livewire\Livewire;
 
 class PanelTest extends TestCase
 {
@@ -111,6 +116,99 @@ class PanelTest extends TestCase
 
         $this->assertNotContains(DebugCluster::class, $keys);
         $this->assertNotContains(ExceptionResource::class, $keys);
+    }
+
+    /**
+     * The table opens on what nobody has put away yet, and the rest is a filter
+     * away rather than gone.
+     */
+    public function test_the_exceptions_table_opens_on_the_problems_nobody_put_away(): void
+    {
+        $this->actingAs($this->admin());
+
+        Filament::setCurrentPanel('admin');
+
+        $open = Exception::factory()->create(['fingerprint' => md5('open')]);
+        $ignored = Exception::factory()->create(['fingerprint' => md5('ignored')]);
+        $ignored->ignore();
+
+        Livewire::test(ListExceptions::class)
+            ->assertCanSeeTableRecords([$open])
+            ->assertCanNotSeeTableRecords([$ignored])
+            ->filterTable('status', ExceptionStatus::Ignored->value)
+            ->assertCanSeeTableRecords([$ignored])
+            ->assertCanNotSeeTableRecords([$open]);
+    }
+
+    public function test_a_problem_can_be_ignored_from_the_modal(): void
+    {
+        $this->actingAs($this->admin());
+
+        Filament::setCurrentPanel('admin');
+
+        $exception = Exception::factory()->create();
+
+        Livewire::test(ListExceptions::class)
+            ->callAction([
+                TestAction::make('view')->table($exception),
+                TestAction::make('ignore'),
+            ]);
+
+        $this->assertSame(ExceptionStatus::Ignored, $exception->fresh()->status());
+    }
+
+    /**
+     * A selection is decided about per problem: two occurrences of one failure
+     * and one of another are two decisions, not three.
+     */
+    public function test_a_selection_can_be_marked_as_fixed_at_once(): void
+    {
+        $this->actingAs($this->admin());
+
+        Filament::setCurrentPanel('admin');
+
+        $first = Exception::factory()->create(['fingerprint' => md5('one')]);
+        $alsoFirst = Exception::factory()->create(['fingerprint' => md5('one')]);
+        $second = Exception::factory()->create(['fingerprint' => md5('two')]);
+
+        Livewire::test(ListExceptions::class)
+            ->callTableBulkAction('markFixed', [$first, $alsoFirst, $second]);
+
+        $this->assertSame(2, ExceptionState::query()->count());
+        $this->assertCount(0, Exception::query()->open()->get());
+    }
+
+    public function test_an_ignored_problem_can_be_reopened_in_bulk(): void
+    {
+        $this->actingAs($this->admin());
+
+        Filament::setCurrentPanel('admin');
+
+        $exception = Exception::factory()->create();
+        $exception->ignore();
+
+        Livewire::test(ListExceptions::class)
+            ->filterTable('status', ExceptionStatus::Ignored->value)
+            ->callTableBulkAction('reopen', [$exception]);
+
+        $this->assertNull($exception->fresh()->status());
+        $this->assertSame(0, ExceptionState::query()->count());
+    }
+
+    /**
+     * The badge asks for attention, so it counts only what nobody has answered
+     * for yet.
+     */
+    public function test_the_navigation_badge_leaves_out_what_has_been_put_away(): void
+    {
+        $this->actingAs($this->admin());
+
+        Filament::setCurrentPanel('admin');
+
+        Exception::factory()->create(['fingerprint' => md5('open')]);
+        Exception::factory()->create(['fingerprint' => md5('ignored')])->ignore();
+
+        $this->assertSame('1', ExceptionResource::getNavigationBadge());
     }
 
     private function admin(): User

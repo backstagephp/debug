@@ -4,6 +4,7 @@ namespace Backstage\Debug\Filament\Resources\ExceptionResource\Pages;
 
 use Backstage\Debug\Filament\Resources\ExceptionResource;
 use Backstage\Debug\Models\Exception;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -28,11 +29,12 @@ class ViewException extends ViewRecord
     }
 
     /**
-     * @return array<int, DeleteAction>
+     * @return array<int, Action>
      */
     protected function getHeaderActions(): array
     {
         return [
+            ...ExceptionResource::decisionActions(),
             DeleteAction::make(),
         ];
     }

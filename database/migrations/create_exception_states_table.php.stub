@@ -1,0 +1,32 @@
+<?php
+
+use Backstage\Debug\Debug;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('exception_states', function (Blueprint $table): void {
+            $table->id();
+            // One row per problem rather than per occurrence: ignoring or
+            // fixing a failure is a decision about the failure itself, and the
+            // fingerprint is what the occurrences of one failure share.
+            $table->string('fingerprint', 32)->unique();
+            $table->string('status')->index();
+            // The moment the decision was made, which is what tells a fix that
+            // held apart from one that did not: an occurrence after this is a
+            // failure that came back.
+            $table->timestamp('marked_at');
+            $table->foreignIdFor(Debug::userModel())->nullable()->constrained()->nullOnDelete();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('exception_states');
+    }
+};
