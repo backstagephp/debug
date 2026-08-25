@@ -1,0 +1,39 @@
+<?php
+
+use Backstage\Debug\Debug;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('logs', function (Blueprint $table): void {
+            $table->id();
+            $table->string('level')->index();
+            // The PSR-3 severity of the level as a number, so "everything from
+            // warning up" is one comparison rather than a list of names.
+            $table->unsignedTinyInteger('severity')->index();
+            $table->text('message');
+            $table->longText('context')->nullable();
+            // Whether the line was written while serving a request or while
+            // running a command, which decides which of the columns below are
+            // filled.
+            $table->string('source')->index();
+            $table->string('method')->nullable();
+            $table->text('url')->nullable();
+            $table->text('command')->nullable();
+            // Taken off the user model rather than assumed, so an application
+            // keying its users by uuid gets a uuid column here too.
+            $table->foreignIdFor(Debug::userModel())->nullable()->constrained()->nullOnDelete();
+            $table->timestamp('logged_at')->index();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('logs');
+    }
+};

@@ -1,0 +1,45 @@
+<?php
+
+use Backstage\Debug\Debug;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('exceptions', function (Blueprint $table): void {
+            $table->id();
+            // The class, file and line an exception was thrown from, hashed.
+            // The same failure keeps the same fingerprint however often it
+            // happens, so the table can be narrowed to one problem at a time.
+            $table->string('fingerprint', 32)->index();
+            $table->string('exception_class')->index();
+            $table->text('message');
+            $table->string('code')->nullable();
+            $table->text('file')->nullable();
+            $table->unsignedInteger('line')->nullable();
+            $table->longText('trace')->nullable();
+            // Whether the exception came out of a request or out of a command,
+            // which decides which of the columns below are filled.
+            $table->string('source')->index();
+            $table->string('method')->nullable();
+            $table->text('url')->nullable();
+            $table->string('ip')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->text('command')->nullable();
+            // Taken off the user model rather than assumed, so an application
+            // keying its users by uuid gets a uuid column here too.
+            $table->foreignIdFor(Debug::userModel())->nullable()->constrained()->nullOnDelete();
+            $table->json('context')->nullable();
+            $table->timestamp('occurred_at')->index();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('exceptions');
+    }
+};

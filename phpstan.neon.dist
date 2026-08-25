@@ -1,0 +1,15 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - src
+        - config
+    tmpDir: build/phpstan
+    checkOctaneCompatibility: true
+    # The exception handler and the HTTP kernel are both swappable: which class
+    # sits behind the contract in the application installing this package is
+    # not what happens to sit behind it in the dev dependencies here, so the
+    # `instanceof` guards on them are real rather than always-true.
+    treatPhpDocTypesAsCertain: false
